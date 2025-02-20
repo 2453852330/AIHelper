@@ -9,7 +9,7 @@
 #include "Models/ModelBase.h"
 
 #include "UObject/NoExportTypes.h"
-#include "BaiLian_DeepSeek_R1.generated.h"
+#include "BaiLian_DeepSeek.generated.h"
 
 
 class UAIManager;
@@ -28,7 +28,7 @@ namespace BaiLian_DeepSeek_R1_API
  * 
  */
 UCLASS()
-class AIHELPER_API UBaiLian_DeepSeek_R1 : public UModelBase
+class AIHELPER_API UBaiLian_DeepSeek : public UModelBase
 {
 	GENERATED_BODY()
 public:
@@ -41,7 +41,8 @@ public:
 	virtual FString GetChatMessage() override;
 	virtual FString GetChatReason() override;
 	virtual void ResetModel() override;
-
+	virtual TArray<FString> GetSupportModels() override;
+	virtual void SetCurrentModel(FString ModelName) override;
 	//
 	UPROPERTY()
 	UAIManager* AIManager = nullptr;
@@ -52,6 +53,7 @@ private:
 
 	FString CacheMessage;
 	FString CacheReason;
+	FString CurrentModelName;
 	TArray<BaiLian_DeepSeek_R1_API::FMessage> MessageList;
 	void CF_SaveChatMessage(const FString& Message,FString Role);
 	FString CF_GetChatHistoryString() const;

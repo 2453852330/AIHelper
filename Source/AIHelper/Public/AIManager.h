@@ -12,8 +12,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnChatFinish, bool , bStream, cons
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnChatReason, bool , bStream, const FString & , CreateId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnModelError,const FString & ,ErrorMessage);
 
-#define BAILIAN_DeepSeek_R1 TEXT("MODEL_DEEPSEEK_R1")
-#define TONGYI_Omni_Turbo TEXT("MODEL_Omni_Turbo")
+#define BAILIAN_DeepSeek_CATEGORY TEXT("MODEL_DEEPSEEK_CATEGORY")
+#define BAILIAN_TongYiQianWen_CATEGORY TEXT("MODEL_TYQW_CATEGORY")
 
 class UModelBase;
 
@@ -27,12 +27,15 @@ public:
 
 	FString StartTime;
 	FString CurrentModelName;
+	FString CurrentModelCategory;
 	
 	UPROPERTY()
 	TMap<FString,UModelBase*> AIMaps;
 
 	UFUNCTION(BlueprintCallable,Category="AIManager")
-	void BP_SetCurrentModel(FString InModelName);
+	void BP_SetCurrentModelCategory(FString InModelCategory);
+	UFUNCTION(BlueprintCallable,Category="AIManager")
+	void BP_SetCurrentModelName(FString InModelName);
 	UFUNCTION(BlueprintCallable,Category="AIManager")
 	void BP_Chat(FString Message);	
 	UFUNCTION(BlueprintPure,Category="AIManager")
@@ -40,7 +43,9 @@ public:
 	UFUNCTION(BlueprintPure,Category="AIManager")
 	FString BP_GetChatReason();
 	UFUNCTION(BlueprintPure,Category="AIManager")
-	TArray<FString> BP_GetAllModels();
+	TArray<FString> BP_GetAllModelCategory();
+	UFUNCTION(BlueprintPure,Category="AIManager")
+	TArray<FString> BP_GetAllModelName();	
 	
 	UPROPERTY(BlueprintAssignable,Category="AIManager")
 	FOnChatFinish OnChatFinish;

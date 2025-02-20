@@ -1,31 +1,30 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Models/BaiLian/TongYi_Omni_Turbo.h"
+#include "Models/BaiLian/BaiLian_TongYiQianWen.h"
 
 #include "AIManager.h"
 #include "HttpModule.h"
 #include "LogHelper.h"
 
-#include "Interfaces/IHttpResponse.h"
 #include "Settings/AIDeveloperSettings.h"
 
-FString UTongYi_Omni_Turbo::GetModelType()
+FString UBaiLian_TongYiQianWen::GetModelType()
 {
 	return TEXT("Chat|Audio|Pic");
 }
 
-void UTongYi_Omni_Turbo::UseModel()
+void UBaiLian_TongYiQianWen::UseModel()
 {
 	LogDefault("UTongYi_Omni_Turbo::UseModel");
 }
 
-void UTongYi_Omni_Turbo::UnUseModel()
+void UBaiLian_TongYiQianWen::UnUseModel()
 {
 	LogDefault("UTongYi_Omni_Turbo::UnUseModel")
 }
 
-void UTongYi_Omni_Turbo::Chat(FString Message)
+void UBaiLian_TongYiQianWen::Chat(FString Message)
 {
 	LogDefault("Start Chat")
 	CacheMessage = TEXT("");
@@ -36,36 +35,49 @@ void UTongYi_Omni_Turbo::Chat(FString Message)
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetHeader(TEXT("Authorization"), TEXT(" Bearer ") + GetDefault<UAIDeveloperSettings>()->BaiLianAPIKey);
-	FString Front = R"({ "model": "qwen-omni-turbo", "messages": [ )";
+	FString Model_F = R"({ "model": ")";
+	FString Model_B = R"(", "messages": [)";
+	FString Front = Model_F + CurrentUseModel + Model_B;
 	FString Back = R"(], "stream":true, "modalities":["text"] })";
 	// FString Back = R"(" } ], "stream":true, "modalities":["text"], "audio":{"voice":"Cherry","format":"wav"} })";
 	FString Body = Front + CF_GetChatHistoryString() + Back;
 	// LogDefault("body:%s",*Body)
 	Request->SetContentAsString(Body);
 	Request->SetTimeout(120);
-	Request->OnRequestProgress64().BindUObject(this,&UTongYi_Omni_Turbo::Bind_OnRequestProgress64);
-	Request->OnProcessRequestComplete().BindUObject(this, &UTongYi_Omni_Turbo::Bind_OnRequestProcessComplete);
-	Request->SetResponseBodyReceiveStreamDelegate(FHttpRequestStreamDelegate::CreateUObject(this,&UTongYi_Omni_Turbo::Bind_ResponseBodyReceiveStreamDelegate));
+	Request->OnRequestProgress64().BindUObject(this,&UBaiLian_TongYiQianWen::Bind_OnRequestProgress64);
+	Request->OnProcessRequestComplete().BindUObject(this, &UBaiLian_TongYiQianWen::Bind_OnRequestProcessComplete);
+	Request->SetResponseBodyReceiveStreamDelegate(FHttpRequestStreamDelegate::CreateUObject(this,&UBaiLian_TongYiQianWen::Bind_ResponseBodyReceiveStreamDelegate));
 	Request->ProcessRequest();
 }
 
-FString UTongYi_Omni_Turbo::GetChatMessage()
+FString UBaiLian_TongYiQianWen::GetChatMessage()
 {
 	return CacheMessage;
 }
 
-void UTongYi_Omni_Turbo::ResetModel()
+void UBaiLian_TongYiQianWen::ResetModel()
 {
 	CacheMessage = TEXT("");
 	SavedMessageList.Empty();
 }
 
-void UTongYi_Omni_Turbo::Bind_OnRequestProgress64(FHttpRequestPtr Request, uint64 BytesSent, uint64 BytesReceived)
+TArray<FString> UBaiLian_TongYiQianWen::GetSupportModels()
+{
+	return {TEXT("qwen-omni-turbo"),TEXT("qwen-omni-turbo-latest")};
+}
+
+void UBaiLian_TongYiQianWen::SetCurrentModel(FString ModelName)
+{
+	ResetModel();
+	CurrentUseModel = ModelName;
+}
+
+void UBaiLian_TongYiQianWen::Bind_OnRequestProgress64(FHttpRequestPtr Request, uint64 BytesSent, uint64 BytesReceived)
 {
 	// LogDefault("BytesSent:%llu BytesReceived:%llu", BytesSent, BytesReceived);
 }
 
-void UTongYi_Omni_Turbo::Bind_OnRequestProcessComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully)
+void UBaiLian_TongYiQianWen::Bind_OnRequestProcessComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully)
 {
 	if (!bConnectedSuccessfully)
 	{
@@ -78,7 +90,7 @@ void UTongYi_Omni_Turbo::Bind_OnRequestProcessComplete(FHttpRequestPtr Request, 
 }
 
 
-bool UTongYi_Omni_Turbo::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int64 Length)
+bool UBaiLian_TongYiQianWen::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int64 Length)
 {
 	uint8* data = reinterpret_cast<uint8*>(Ptr);
 	FString ReceiveString = FString(Length,UTF8_TO_TCHAR(data));
@@ -111,7 +123,7 @@ bool UTongYi_Omni_Turbo::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int64
 				FString content = deltaObj->GetStringField(TEXT("content"));
 				CacheMessage += content;
 				// LogWarning("CacheMessage:%s | id:%s | content:%s",*CacheMessage,*id,*content)
-				AsyncTask(ENamedThreads::Type::GameThread,[Omni_Turbo = TWeakObjectPtr<UTongYi_Omni_Turbo>(this),id]()
+				AsyncTask(ENamedThreads::Type::GameThread,[Omni_Turbo = TWeakObjectPtr<UBaiLian_TongYiQianWen>(this),id]()
 				{
 					if (Omni_Turbo.IsValid() && Omni_Turbo->AIManager)
 					{
@@ -131,7 +143,7 @@ bool UTongYi_Omni_Turbo::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int64
 }
 
 
-void UTongYi_Omni_Turbo::CF_SaveChatMessage(const FString& Message, FString Role)
+void UBaiLian_TongYiQianWen::CF_SaveChatMessage(const FString& Message, FString Role)
 {
 	TongYi_Omni_Turbo_API::FMessage Tmp;
 	Tmp.role = Role;
@@ -140,7 +152,7 @@ void UTongYi_Omni_Turbo::CF_SaveChatMessage(const FString& Message, FString Role
 	SavedMessageList.Emplace(Tmp);
 }
 
-FString UTongYi_Omni_Turbo::CF_GetChatHistoryString() const
+FString UBaiLian_TongYiQianWen::CF_GetChatHistoryString() const
 {
 	FString Tmp;
 	// 

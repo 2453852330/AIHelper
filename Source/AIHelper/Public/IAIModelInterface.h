@@ -12,4 +12,6 @@ public:
 	virtual FString GetChatMessage() = 0;
 	virtual FString GetChatReason() = 0;
 	virtual void ResetModel() = 0;
+	virtual TArray<FString> GetSupportModels() = 0;
+	virtual void SetCurrentModel(FString ModelName) = 0;
 };

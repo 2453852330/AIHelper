@@ -6,7 +6,7 @@
 #include "AIType.h"
 #include "HttpFwd.h"
 #include "Models/ModelBase.h"
-#include "TongYi_Omni_Turbo.generated.h"
+#include "BaiLian_TongYiQianWen.generated.h"
 
 class UAIManager;
 
@@ -28,7 +28,7 @@ namespace TongYi_Omni_Turbo_API
 
 
 UCLASS()
-class AIHELPER_API UTongYi_Omni_Turbo : public UModelBase
+class AIHELPER_API UBaiLian_TongYiQianWen : public UModelBase
 {
 	GENERATED_BODY()
 public:
@@ -38,6 +38,8 @@ public:
 	virtual void Chat(FString Message) override;
 	virtual FString GetChatMessage() override;
 	virtual void ResetModel() override;
+	virtual TArray<FString> GetSupportModels() override;
+	virtual void SetCurrentModel(FString ModelName) override;
 
 	void Bind_OnRequestProgress64(FHttpRequestPtr Request, uint64 BytesSent, uint64 BytesReceived);
 	void Bind_OnRequestProcessComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnectedSuccessfully);
@@ -49,6 +51,7 @@ public:
 private:
 	
 	FString CacheMessage;
+	FString CurrentUseModel;
 	
 	TArray<TongYi_Omni_Turbo_API::FMessage> SavedMessageList;
 	void CF_SaveChatMessage(const FString& Message,FString Role);

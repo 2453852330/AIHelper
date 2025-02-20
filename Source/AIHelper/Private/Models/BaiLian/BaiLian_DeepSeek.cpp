@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Models/BaiLian/BaiLian_DeepSeek_R1.h"
+#include "Models/BaiLian/BaiLian_DeepSeek.h"
 
 #include "AIManager.h"
 #include "HttpModule.h"
@@ -9,22 +9,22 @@
 
 #include "Settings/AIDeveloperSettings.h"
 
-FString UBaiLian_DeepSeek_R1::GetModelType()
+FString UBaiLian_DeepSeek::GetModelType()
 {
 	return TEXT("Chat");
 }
 
-void UBaiLian_DeepSeek_R1::UseModel()
+void UBaiLian_DeepSeek::UseModel()
 {
 	LogDefault("Use BaiLianDeepSeekR1 Model")
 }
 
-void UBaiLian_DeepSeek_R1::UnUseModel()
+void UBaiLian_DeepSeek::UnUseModel()
 {
 	LogDefault("UnUse BaiLianDeepSeekR1 Model")
 }
 
-void UBaiLian_DeepSeek_R1::Chat(FString Message)
+void UBaiLian_DeepSeek::Chat(FString Message)
 {
 	LogDefault("Start Chat")
 	CacheMessage = TEXT("");
@@ -36,35 +36,50 @@ void UBaiLian_DeepSeek_R1::Chat(FString Message)
 	Request->SetVerb(TEXT("POST"));
 	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
 	Request->SetHeader(TEXT("Authorization"), TEXT(" Bearer ") + GetDefault<UAIDeveloperSettings>()->BaiLianAPIKey);
-	FString Front = R"({ "model": "deepseek-r1", "messages": [)";
+	FString Front_M = R"({ "model": ")";
+	FString Back_M = R"(", "messages": [)";
+	FString Front = Front_M + CurrentModelName + Back_M;
 	FString Back = R"(], "stream": true, "stream_options": { "include_usage": true } })";
 	FString Body = Front + CF_GetChatHistoryString() + Back;
 	LogDefault("body:%s",*Body)
 	Request->SetContentAsString(Body);
 	Request->SetTimeout(120);
-	Request->OnProcessRequestComplete().BindUObject(this, &UBaiLian_DeepSeek_R1::Bind_OnRequestProcessComplete);
-	Request->SetResponseBodyReceiveStreamDelegate(FHttpRequestStreamDelegate::CreateUObject(this,&UBaiLian_DeepSeek_R1::Bind_ResponseBodyReceiveStreamDelegate));
+	Request->OnProcessRequestComplete().BindUObject(this, &UBaiLian_DeepSeek::Bind_OnRequestProcessComplete);
+	Request->SetResponseBodyReceiveStreamDelegate(FHttpRequestStreamDelegate::CreateUObject(this,&UBaiLian_DeepSeek::Bind_ResponseBodyReceiveStreamDelegate));
 	Request->ProcessRequest();
 }
 
-FString UBaiLian_DeepSeek_R1::GetChatMessage()
+FString UBaiLian_DeepSeek::GetChatMessage()
 {
 	return CacheMessage;
 }
 
-FString UBaiLian_DeepSeek_R1::GetChatReason()
+FString UBaiLian_DeepSeek::GetChatReason()
 {
 	return CacheReason;
 }
 
-void UBaiLian_DeepSeek_R1::ResetModel()
+void UBaiLian_DeepSeek::ResetModel()
 {
 	CacheMessage = TEXT("");
 	CacheReason = TEXT("");
 	MessageList.Empty();
 }
 
-void UBaiLian_DeepSeek_R1::Bind_OnRequestProcessComplete(FHttpRequestPtr Request, FHttpResponsePtr Response,bool bConnectedSuccessfully)
+TArray<FString> UBaiLian_DeepSeek::GetSupportModels()
+{
+	return {TEXT("deepseek-r1"),TEXT("deepseek-v3"),TEXT("deepseek-r1-distill-qwen-1.5b"),TEXT("deepseek-r1-distill-qwen-7b"),
+		TEXT("deepseek-r1-distill-qwen-14b"),TEXT("deepseek-r1-distill-qwen-32b"),TEXT("deepseek-r1-distill-llama-8b"),TEXT("deepseek-r1-distill-llama-70b")
+	};
+}
+
+void UBaiLian_DeepSeek::SetCurrentModel(FString ModelName)
+{
+	ResetModel();
+	CurrentModelName = ModelName;
+}
+
+void UBaiLian_DeepSeek::Bind_OnRequestProcessComplete(FHttpRequestPtr Request, FHttpResponsePtr Response,bool bConnectedSuccessfully)
 {
 	if (!bConnectedSuccessfully)
 	{
@@ -79,7 +94,7 @@ void UBaiLian_DeepSeek_R1::Bind_OnRequestProcessComplete(FHttpRequestPtr Request
 	LogDefault("content:%s",*CacheMessage)
 }
 
-bool UBaiLian_DeepSeek_R1::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int64 Length)
+bool UBaiLian_DeepSeek::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int64 Length)
 {
 	uint8* data = reinterpret_cast<uint8*>(Ptr);
 	FString ReceiveString = FString(Length,UTF8_TO_TCHAR(data));
@@ -114,7 +129,7 @@ bool UBaiLian_DeepSeek_R1::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int
 				if (deltaObj->TryGetStringField(TEXT("content"),content))
 				{
 					CacheMessage += content;
-					AsyncTask(ENamedThreads::Type::GameThread,[DSR1 = TWeakObjectPtr<UBaiLian_DeepSeek_R1>(this),id]()
+					AsyncTask(ENamedThreads::Type::GameThread,[DSR1 = TWeakObjectPtr<UBaiLian_DeepSeek>(this),id]()
 					{
 						if (DSR1.IsValid() && DSR1->AIManager)
 						{
@@ -125,7 +140,7 @@ bool UBaiLian_DeepSeek_R1::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int
 				if (deltaObj->TryGetStringField(TEXT("reasoning_content"),reason))
 				{
 					CacheReason += reason;
-					AsyncTask(ENamedThreads::Type::GameThread,[DSR1 = TWeakObjectPtr<UBaiLian_DeepSeek_R1>(this),id]()
+					AsyncTask(ENamedThreads::Type::GameThread,[DSR1 = TWeakObjectPtr<UBaiLian_DeepSeek>(this),id]()
 					{
 						if (DSR1.IsValid() && DSR1->AIManager)
 						{
@@ -145,7 +160,7 @@ bool UBaiLian_DeepSeek_R1::Bind_ResponseBodyReceiveStreamDelegate(void* Ptr, int
 	return true;
 }
 
-void UBaiLian_DeepSeek_R1::CF_SaveChatMessage(const FString& Message, FString Role)
+void UBaiLian_DeepSeek::CF_SaveChatMessage(const FString& Message, FString Role)
 {
 	BaiLian_DeepSeek_R1_API::FMessage Tmp;
 	Tmp.content = Message;
@@ -153,7 +168,7 @@ void UBaiLian_DeepSeek_R1::CF_SaveChatMessage(const FString& Message, FString Ro
 	MessageList.Emplace(Tmp);
 }
 
-FString UBaiLian_DeepSeek_R1::CF_GetChatHistoryString() const
+FString UBaiLian_DeepSeek::CF_GetChatHistoryString() const
 {
 	FString Tmp;
 	// { "role": "user", "content": "你好" }

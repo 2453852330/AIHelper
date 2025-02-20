@@ -23,4 +23,6 @@ public:
 	virtual FString GetChatMessage() override{ return TEXT(""); };
 	virtual void ResetModel() override{};
 	virtual FString GetChatReason() override{return TEXT(""); };
+	virtual TArray<FString> GetSupportModels() override{return {};};
+	virtual void SetCurrentModel(FString ModelName) override {};
 };
